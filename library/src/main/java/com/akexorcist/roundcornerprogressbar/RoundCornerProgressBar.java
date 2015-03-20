@@ -33,7 +33,7 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.widget.LinearLayout;
-import android.widget.TextView;
+import android.widget.RelativeLayout;
 
 public class RoundCornerProgressBar extends LinearLayout {
     private final static int DEFAULT_PROGRESS_BAR_HEIGHT = 30;
@@ -61,30 +61,22 @@ public class RoundCornerProgressBar extends LinearLayout {
     private int secondaryProgressColor = Color.parseColor("#7f7f7f7f");
     private int backgroundColor = Color.parseColor("#ff5f5f5f");
 
+    private int gravity = Gravity.NO_GRAVITY;
+
     @SuppressLint("NewApi")
     public RoundCornerProgressBar(Context context, AttributeSet attrs) {
         super(context, attrs);
 
-        if (!isInEditMode()) {
-            isProgressBarCreated = false;
-            isProgressSetBeforeDraw = false;
-            isMaxProgressSetBeforeDraw = false;
-            isBackgroundColorSetBeforeDraw = false;
-            isProgressColorSetBeforeDraw = false;
-            LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            inflater.inflate(R.layout.round_corner_layout, this);
-            setup(context, attrs);
-            isProgressBarCreated = true;
-            return;
-        }
-
-        setBackgroundColor(backgroundColor);
-
-        setGravity(Gravity.CENTER);
-
-        TextView tv = new TextView(context);
-        tv.setText("RoundCornerProgressBar");
-        addView(tv);
+        isProgressBarCreated = false;
+        isProgressSetBeforeDraw = false;
+        isMaxProgressSetBeforeDraw = false;
+        isBackgroundColorSetBeforeDraw = false;
+        isProgressColorSetBeforeDraw = false;
+        LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        inflater.inflate(R.layout.round_corner_layout, this);
+        setup(context, attrs);
+        isProgressBarCreated = true;
+        return;
     }
 
     @SuppressLint("NewApi")
@@ -108,16 +100,24 @@ public class RoundCornerProgressBar extends LinearLayout {
             public void onGlobalLayout() {
                 layoutBackground.getViewTreeObserver().removeOnGlobalLayoutListener(this);
                 int height;
+                int width;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-                    backgroundWidth = layoutBackground.getMeasuredWidth();
+                    width = layoutBackground.getMeasuredWidth();
                     height = layoutBackground.getMeasuredHeight();
                 } else {
-                    backgroundWidth = layoutBackground.getWidth();
+                    width = layoutBackground.getWidth();
                     height = layoutBackground.getHeight();
                 }
-                backgroundHeight = (height == 0) ? (int) dp2px(DEFAULT_PROGRESS_BAR_HEIGHT) : height;
                 LayoutParams params = (LayoutParams)layoutBackground.getLayoutParams();
-                params.height = backgroundHeight;
+                if (getOrientation() == VERTICAL) {
+                    backgroundHeight = height;
+                    backgroundWidth = (width == 0) ? (int) dp2px(DEFAULT_PROGRESS_BAR_HEIGHT) : width;
+                    params.width = backgroundWidth;
+                } else {
+                    backgroundHeight = (height == 0) ? (int) dp2px(DEFAULT_PROGRESS_BAR_HEIGHT) : height;
+                    backgroundWidth = width;
+                    params.height = backgroundHeight;
+                }
                 layoutBackground.setLayoutParams(params);
 
                 setProgress();
@@ -143,9 +143,71 @@ public class RoundCornerProgressBar extends LinearLayout {
             secondaryProgress = typedArray.getFloat(R.styleable.RoundCornerProgress_rcSecondaryProgress, 0);
         }
 
+        if (getOrientation() == VERTICAL) {
+            layoutBackground.setOrientation(VERTICAL);
+            layoutProgress.setOrientation(VERTICAL);
+            layoutSecondaryProgress.setOrientation(VERTICAL);
+        }
+
+        gravity = typedArray.getInt(R.styleable.RoundCornerProgress_android_gravity, Gravity.NO_GRAVITY);
+        layoutBackground.setGravity(gravity);
+        setLayoutParamsWithGravity(layoutProgress, gravity);
+        setLayoutParamsWithGravity(layoutSecondaryProgress, gravity);
+
         typedArray.recycle();
     }
 
+    private void setLayoutParamsWithGravity(ViewGroup layout, int gravity) {
+        final int verticalGravity = gravity & Gravity.VERTICAL_GRAVITY_MASK;
+        final int horizontalGravity = gravity & Gravity.HORIZONTAL_GRAVITY_MASK;
+
+        // has vertical gravity defined.
+        if (verticalGravity > 0) {
+            RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) layout.getLayoutParams();
+            layoutParams.addRule(RelativeLayout.ALIGN_PARENT_TOP, 0);
+            layoutParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, 0);
+            layoutParams.addRule(RelativeLayout.CENTER_IN_PARENT, 0);
+            layoutParams.addRule(RelativeLayout.CENTER_VERTICAL, 0);
+            switch (verticalGravity) {
+            case Gravity.BOTTOM:
+                layoutParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
+                break;
+
+            case Gravity.CENTER_VERTICAL:
+                layoutParams.addRule(RelativeLayout.CENTER_VERTICAL);
+                break;
+
+            case Gravity.TOP:
+            default:
+                layoutParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+                break;
+            }
+        }
+
+        if (horizontalGravity > 0) {
+            RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) layout.getLayoutParams();
+            layoutParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT, 0);
+            layoutParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT, 0);
+            layoutParams.addRule(RelativeLayout.CENTER_IN_PARENT, 0);
+            layoutParams.addRule(RelativeLayout.CENTER_HORIZONTAL, 0);
+            switch (horizontalGravity) {
+            case Gravity.CENTER_HORIZONTAL:
+                layoutParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
+                break;
+
+            case Gravity.RIGHT:
+                layoutParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+                break;
+
+            case Gravity.LEFT:
+            default:
+                layoutParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+                break;
+            }
+        }
+    }
+
+    @SuppressLint("NewApi")
     @SuppressWarnings("deprecation")
     private void setProgressColor(ViewGroup layout, int color) {
         int radius = this.radius - (padding / 2);
@@ -182,6 +244,7 @@ public class RoundCornerProgressBar extends LinearLayout {
         }
     }
 
+    @Override
     @SuppressWarnings("deprecation")
     @SuppressLint("NewApi")
     public void setBackgroundColor(int color) {
@@ -220,7 +283,10 @@ public class RoundCornerProgressBar extends LinearLayout {
         float ratio = max / progress;
 
         ViewGroup.LayoutParams params = layoutProgress.getLayoutParams();
-        params.width = (int)((backgroundWidth - (padding * 2)) / ratio);
+        if (getOrientation() == VERTICAL)
+            params.height = (int)((backgroundHeight - (padding * 2)) / ratio);
+        else
+            params.width = (int)((backgroundWidth - (padding * 2)) / ratio);
         layoutProgress.setLayoutParams(params);
 
         if (!isProgressBarCreated) {
@@ -239,7 +305,10 @@ public class RoundCornerProgressBar extends LinearLayout {
         float ratio = max / secondaryProgress;
 
         ViewGroup.LayoutParams params = layoutSecondaryProgress.getLayoutParams();
-        params.width = (int)((backgroundWidth - (padding * 2)) / ratio);
+        if (getOrientation() == VERTICAL)
+            params.height = (int)((backgroundHeight - (padding * 2)) / ratio);
+        else
+            params.width = (int)((backgroundWidth - (padding * 2)) / ratio);
         layoutSecondaryProgress.setLayoutParams(params);
 
         if (!isProgressBarCreated) {

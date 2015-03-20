@@ -38,6 +38,8 @@ limitations under the License.
         <attr name="rcAutoTextChange" format="boolean" />
         <attr name="rcSecondaryProgress" format="float" />
         <attr name="rcSecondaryProgressColor" format="color" />
+        <attr name="android:orientation" />
+        <attr name="android:gravity" />
     </declare-styleable>
 
 </resources>
